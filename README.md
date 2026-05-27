@@ -1,16 +1,17 @@
-# URL Shortener API
+# Consulta Localiza CEP API
 
-API REST desenvolvida com Java e Spring Boot para encurtamento de URLs, permitindo gerar links curtos, consultar URLs cadastradas e realizar redirecionamentos automáticos.
+API REST desenvolvida com Java e Spring Boot para consulta de CEPs utilizando a API ViaCEP, permitindo buscar informações de endereço, armazenar histórico de consultas e tratar exceções globalmente.
 
 ---
 
 ## Funcionalidades
 
-- Criar URLs encurtadas
-- Buscar URL pelo código curto
-- Listar todas as URLs cadastradas
-- Redirecionar automaticamente para a URL original
+- Buscar endereço por CEP
+- Integração com API ViaCEP
+- Armazenar histórico de consultas
+- Listar CEPs consultados
 - Tratamento global de exceções
+- Validação de CEP
 - Banco de dados H2 em memória
 
 ---
@@ -24,19 +25,21 @@ API REST desenvolvida com Java e Spring Boot para encurtamento de URLs, permitin
 - H2 Database
 - Lombok
 - Maven
+- ViaCEP API
 
 ---
 
 ## Estrutura do projeto
 
 ```bash
-src/main/java/com/Shortener/Url
+src/main/java/Consulta/Localiza/Cep
 │
 ├── controller     # Endpoints REST
 ├── service        # Regras de negócio
 ├── repository     # Comunicação com banco de dados
 ├── model          # Entidade JPA
-├── dto            # Objetos de Request/Response
+├── dto            # Objetos de resposta
+├── client         # Consumo da API ViaCEP
 ├── exception      # Tratamento de exceções
 ```
 
@@ -47,13 +50,13 @@ src/main/java/com/Shortener/Url
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/Matheus-Cabral81/URL-Shortener-API.git
+git clone https://github.com/SEU-USUARIO/NOME-DO-REPOSITORIO.git
 ```
 
 ### 2. Acesse a pasta do projeto
 
 ```bash
-cd URL-Shortener-API
+cd NOME-DO-REPOSITORIO
 ```
 
 ### 3. Execute a aplicação
@@ -61,7 +64,7 @@ cd URL-Shortener-API
 Execute a classe:
 
 ```java
-UrlApplication.java
+CepApplication.java
 ```
 
 Ou pelo terminal:
@@ -72,20 +75,20 @@ Ou pelo terminal:
 
 ---
 
-## Banco de dados H2
+# Banco de dados H2
 
 O projeto utiliza banco de dados H2 em memória.
 
-### Console H2
+## Console H2
 
 ```bash
 http://localhost:8080/h2-console
 ```
 
-### Configurações
+## Configurações
 
 ```bash
-JDBC URL: jdbc:h2:mem:urldb
+JDBC URL: jdbc:h2:mem:testdb
 User Name: sa
 Password:
 ```
@@ -94,16 +97,14 @@ Password:
 
 # Endpoints da API
 
-## Criar URL encurtada
+## Buscar CEP
 
-### POST `/api/urls`
+### GET `/api/cep/{cep}`
 
-### Body
+Exemplo:
 
-```json
-{
-  "urlOriginal": "https://google.com"
-}
+```bash
+GET /api/cep/01001000
 ```
 
 ### Exemplo de resposta
@@ -111,83 +112,53 @@ Password:
 ```json
 {
   "id": 1,
-  "urlOriginal": "https://google.com",
-  "urlCurta": "a1b2c3d4",
-  "geradoEm": "2026-05-27T20:30:00"
+  "cep": "01001-000",
+  "logradouro": "Praça da Sé",
+  "complemento": "lado ímpar",
+  "bairro": "Sé",
+  "localidade": "São Paulo",
+  "uf": "SP",
+  "estado": "São Paulo",
+  "regiao": "Sudeste",
+  "ibge": "3550308",
+  "ddd": "11",
+  "siafi": "7107",
+  "consultadoEm": "2026-05-27T20:30:00"
 }
 ```
 
 ---
 
-## Buscar URL pelo código
+## Listar histórico de consultas
 
-### GET `/api/urls/{codigo}`
-
-Exemplo:
-
-```bash
-GET /api/urls/a1b2c3d4
-```
-
----
-
-## Listar todas URLs
-
-### GET `/api/urls`
-
----
-
-## Redirecionar URL
-
-### GET `/api/urls/redirect/{codigo}`
+### GET `/api/cep/historico`
 
 Exemplo:
 
 ```bash
-GET /api/urls/redirect/a1b2c3d4
-```
-
-A API retorna um redirecionamento HTTP `302 FOUND` para a URL original.
-
----
-
-## Testando com Postman
-
-### Criar URL
-
-- Método: `POST`
-- URL:
-
-```bash
-http://localhost:8080/api/urls
-```
-
-### Body → raw → JSON
-
-```json
-{
-  "urlOriginal": "https://youtube.com"
-}
+GET /api/cep/historico
 ```
 
 ---
 
-## Buscar URL
+# Testando com Postman
+
+## Buscar CEP
 
 - Método: `GET`
 
 ```bash
-http://localhost:8080/api/urls/{codigo}
+http://localhost:8080/api/cep/01001000
 ```
 
 ---
 
-## Redirecionar URL
+## Buscar histórico
 
 - Método: `GET`
 
 ```bash
-http://localhost:8080/api/urls/redirect/{codigo}
+http://localhost:8080/api/cep/historico
 ```
 
 ---
@@ -196,14 +167,27 @@ http://localhost:8080/api/urls/redirect/{codigo}
 
 A aplicação possui tratamento global de exceções utilizando `@RestControllerAdvice`.
 
-### Exemplo de erro
+## Exemplo de CEP inválido
 
 ```json
 {
   "timestamp": "2026-05-27T20:40:00",
+  "status": 400,
+  "error": "Invalid CEP",
+  "message": "CEP inválido: 12A45B78"
+}
+```
+
+---
+
+## Exemplo de CEP não encontrado
+
+```json
+{
+  "timestamp": "2026-05-27T20:41:00",
   "status": 404,
   "error": "Not Found",
-  "message": "URL não encontrada abc123"
+  "message": "CEP não encontrado: 99999999"
 }
 ```
 
@@ -211,14 +195,24 @@ A aplicação possui tratamento global de exceções utilizando `@RestController
 
 # Melhorias futuras
 
-- Validação de URLs
 - Swagger/OpenAPI
 - PostgreSQL
 - Docker
 - Deploy em nuvem
-- Expiração de links
-- Contador de acessos
+- Cache de consultas
 - Testes unitários
+- Validação avançada de CEP
+- Monitoramento com Spring Actuator
+
+---
+
+# API utilizada
+
+ViaCEP
+
+```bash
+https://viacep.com.br/
+```
 
 ---
 
